@@ -1,0 +1,148 @@
+# 微信收款截图识别工具
+
+按日期/门店目录组织微信「零钱明细」截图，OCR 识别「二维码收款」记录，生成 Excel 台账。
+
+## 功能
+
+- `init`：创建 `{data}/{日期}/{门店}/` 目录（门店列表可配置）
+- `process`：扫描截图 → OCR → 生成 `收款记录.xlsx` 与 `处理报告.txt`
+
+## 字段说明
+
+| Excel 列 | 含义 |
+|----------|------|
+| 转账人 | 门店子目录名称 |
+| 转账来源 | 截图中「二维码收款-来自…」的付款方 |
+
+## 快速开始（Windows）
+
+1. 解压 `wechat-receipt-v1.0.0-win64.zip`
+2. 双击或在命令行运行：
+
+```bat
+wechat-receipt.exe init
+wechat-receipt.exe process
+```
+
+3. 将微信零钱明细截图放入 `data\{日期}\{门店}\` 后再次执行 `process`
+
+### 常用参数
+
+```bat
+wechat-receipt.exe init --date 2026-07-02
+wechat-receipt.exe process --date 2026-07-02 --store 北京世纪金源店 --force
+```
+
+- `--force`：覆盖已有 Excel
+- `--config`：指定配置文件路径
+
+## 目录结构
+
+```
+wechat-receipt.exe
+config.yaml
+lib/onnxruntime.dll
+models/*.onnx
+data/
+  2026-07-02/
+    收款记录.xlsx      ← 所有门店合并为一个 Excel
+    处理报告.txt
+    北京世纪金源店/
+      截图.png         ← 门店子目录只放截图
+    成都七道堰店/
+      ...
+```
+
+## 发布打包
+
+交付包根目录仅暴露 4 个入口文件 + OCR 依赖目录：
+
+```
+wechat-receipt-win64/          （或 wechat-receipt-macos/）
+  wechat-receipt.exe           主程序
+  config.yaml                  配置
+  init.bat                     创建门店目录
+  process.bat                  识别并生成 Excel
+  lib/                         OCR 运行库
+  models/                      OCR 模型
+  使用说明.txt
+```
+
+### Windows（推荐：GitHub Actions 自动编译）
+
+代码推送到 [GitHub 仓库](https://github.com/zhangyi202402-alt/wechat-receipt-tool) 后，Actions 会自动编译 Windows 发布包。
+
+1. 打开仓库 **Actions** 页，选择 **Release** 工作流
+2. 编译完成后，在 **Artifacts** 下载 `wechat-receipt-win64`（`wechat-receipt-v1.0.0-win64.zip`）
+3. 解压后双击 `init.bat` → 放截图 → `process.bat`
+
+也可在 Actions 页手动 **Run workflow** 触发编译。
+
+本地 Windows 编译：
+
+```bat
+scripts\build.bat
+powershell -ExecutionPolicy Bypass -File scripts\package.ps1
+```
+
+### macOS
+
+```bash
+bash scripts/build.sh
+bash scripts/package.sh
+```
+
+生成 `wechat-receipt-v1.0.0-macos.zip`，解压后运行 `./init.sh` → 放截图 → `./process.sh`。
+
+## 从源码构建
+
+要求：Go 1.25+、CGO、C 编译器
+
+### Windows
+
+```bat
+scripts\build.bat
+powershell -ExecutionPolicy Bypass -File scripts\download-models.ps1
+```
+
+### macOS
+
+Mac **可以运行** `process`，但必须：
+
+1. 用 **CGO** 重新编译（默认 `go build` 不带 CGO 时 OCR 不可用）
+2. 下载 OCR 模型 + `libonnxruntime.dylib`
+3. `config.yaml` 中 `onnxruntime_lib` 改为 `lib/libonnxruntime.dylib`
+
+```bash
+# 若 Homebrew clang 报 SDK 错误，脚本会使用 /usr/bin/clang
+bash scripts/build.sh
+bash scripts/download-models.sh   # 首次约 170MB
+cd release
+./wechat-receipt init --date 2026-07-02
+./wechat-receipt process --date 2026-07-02 --store 北京世纪金源店 --force
+```
+
+若 GitHub 下载 ONNX Runtime 失败，可手动下载 [onnxruntime-osx-arm64](https://github.com/microsoft/onnxruntime/releases)（Apple 芯片）或 `osx-x64`（Intel），将 `lib/libonnxruntime.dylib` 放到 `release/lib/`。
+
+开发机单元测试（无需 OCR 模型）：
+
+```bash
+CGO_ENABLED=0 go test ./...
+```
+
+## OCR 配置
+
+`config.yaml` 中 `ocr.provider`：
+
+- `gopaddleocr`（默认）：内置 ONNX OCR，免费离线
+- `rapidocr-json`：调用外部 [RapidOCR-json](https://github.com/RapidAI/RapidOCR) 可执行文件
+
+## 限制
+
+- 付款方姓名常为脱敏（如 `*李`），只能识别截图可见文字
+- iPhone HEIC 截图请先转为 PNG/JPG
+- 首次使用需下载 OCR 模型（约 80–120MB）
+
+## 许可证
+
+工具代码 MIT；OCR 模型来自 RapidOCR / PaddleOCR（Apache 2.0）。

@@ -1,0 +1,33 @@
+base_dir: data
+date_format: "2006-01-02"
+stores:
+  - 北京世纪金源店
+  - 成都七道堰店
+  - 南京柳园路店
+  - 苏州白云街店
+  - 天津泰兴路店
+  - 无锡溏泾路店
+  - 无锡锡州中路店
+  - 西安标新街店
+  - 西安凤城四路店
+  - 西安锦业三路店
+  - 西安临潼行者路店
+  - 西安星光一路店
+  - 西安贞观南路店
+  - 西安朱雀大街店
+  - 淄博周村区新建东路
+output_filename: 收款记录.xlsx
+report_filename: 处理报告.txt
+image_extensions:
+  - .png
+  - .jpg
+  - .jpeg
+  - .webp
+ocr:
+  provider: gopaddleocr
+  onnxruntime_lib: lib/onnxruntime.dll
+  models_dir: models
+  rapidocr_json_bin: bin/RapidOCR-json.exe
+  workers: 2
+process:
+  overwrite: false

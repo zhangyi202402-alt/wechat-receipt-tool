@@ -1,0 +1,20 @@
+微信收款截图识别工具 - 使用说明
+
+【目录说明】
+  wechat-receipt(.exe)  主程序
+  config.yaml           配置文件（门店列表等）
+  init.bat / init.sh    创建当日门店文件夹
+  process.bat / process.sh  识别截图，生成 Excel
+  lib/                  OCR 运行库（勿删）
+  models/               OCR 模型（勿删）
+  data/                 数据目录（运行 init 后生成）
+
+【使用步骤】
+  1. 双击 init.bat（Mac 运行 ./init.sh）创建今日目录
+  2. 将微信零钱明细截图放入 data\日期\各门店文件夹
+  3. 双击 process.bat（Mac 运行 ./process.sh）生成 Excel
+  4. 打开 data\日期\收款记录.xlsx 查看合并结果
+
+【可选参数】
+  process.bat --date 2026-07-02 --force
+  process.bat --store 北京世纪金源店
