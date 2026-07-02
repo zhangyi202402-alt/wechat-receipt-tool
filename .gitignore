@@ -6,6 +6,7 @@
 /data/
 /config.yaml
 *.exe
+!scripts/dist/VC_redist.x64.exe
 *.dll
 *.dylib
 *.so

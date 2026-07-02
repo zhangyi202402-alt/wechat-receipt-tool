@@ -17,14 +17,15 @@
 ## 快速开始（Windows）
 
 1. 解压 `wechat-receipt-v1.0.0-win64.zip`
-2. 双击或在命令行运行：
+2. **首次使用**：双击 `VC_redist.x64.exe` 安装 VC++ 运行库（仅需一次）
+3. 双击或在命令行运行：
 
 ```bat
 wechat-receipt.exe init
 wechat-receipt.exe process
 ```
 
-3. 将微信零钱明细截图放入 `data\{日期}\{门店}\` 后再次执行 `process`
+4. 将微信零钱明细截图放入 `data\{日期}\{门店}\` 后再次执行 `process`
 
 ### 常用参数
 
@@ -36,12 +37,22 @@ wechat-receipt.exe process --date 2026-07-02 --store 北京世纪金源店 --for
 - `--force`：覆盖已有 Excel
 - `--config`：指定配置文件路径
 
+### Windows OCR 报错排查
+
+若出现 `Error loading ONNX shared library ... The specified module could not be found`：
+
+1. 确认已安装包内 `VC_redist.x64.exe`（或 [Microsoft VC++ Redistributable x64](https://learn.microsoft.com/zh-cn/cpp/windows/latest-supported-vc-redist)）
+2. 确认 `lib/` 下包含全部 `*.dll`（至少 `onnxruntime.dll` 与 `onnxruntime_providers_shared.dll`）
+3. 确认 `config.yaml` 中 `onnxruntime_lib: lib/onnxruntime.dll`
+4. 使用最新 GitHub Actions 产物重新下载（旧包可能只含单个 DLL）
+
 ## 目录结构
 
 ```
 wechat-receipt.exe
 config.yaml
 lib/onnxruntime.dll
+lib/onnxruntime_providers_shared.dll
 models/*.onnx
 data/
   2026-07-02/
@@ -55,7 +66,7 @@ data/
 
 ## 发布打包
 
-交付包根目录仅暴露 4 个入口文件 + OCR 依赖目录：
+交付包根目录：
 
 ```
 wechat-receipt-win64/          （或 wechat-receipt-macos/）
@@ -63,6 +74,7 @@ wechat-receipt-win64/          （或 wechat-receipt-macos/）
   config.yaml                  配置
   init.bat                     创建门店目录
   process.bat                  识别并生成 Excel
+  VC_redist.x64.exe            VC++ 运行库（Windows，首次安装）
   lib/                         OCR 运行库
   models/                      OCR 模型
   使用说明.txt
@@ -70,13 +82,13 @@ wechat-receipt-win64/          （或 wechat-receipt-macos/）
 
 ### Windows（推荐：GitHub Actions 自动编译）
 
-代码推送到 [GitHub 仓库](https://github.com/zhangyi202402-alt/wechat-receipt-tool) 后，Actions 会自动编译 Windows 发布包。
+代码推送到 [GitHub 仓库](https://github.com/zhangyi202402-alt/wechat-receipt-tool) 的 `main` 分支后，Actions 会自动编译并发布到 **Releases** 页。
 
-1. 打开仓库 **Actions** 页，选择 **Release** 工作流
-2. 编译完成后，在 **Artifacts** 下载 `wechat-receipt-win64`（`wechat-receipt-v1.0.0-win64.zip`）
-3. 解压后双击 `init.bat` → 放截图 → `process.bat`
+1. 打开仓库 **[Releases](https://github.com/zhangyi202402-alt/wechat-receipt-tool/releases)**，下载 `wechat-receipt-v1.0.0-win64.zip`（最新 `v1.0.0`）
+2. 若 Releases 尚未出现，可在 **Actions → Release** 工作流中查看是否成功；Artifacts 里也有同名 zip 备份（保留 90 天）
+3. 解压后先运行 `VC_redist.x64.exe`（首次）→ `init.bat` → 放截图 → `process.bat`
 
-也可在 Actions 页手动 **Run workflow** 触发编译。
+也可在 Actions 页手动 **Run workflow** 触发编译与发布。
 
 本地 Windows 编译：
 

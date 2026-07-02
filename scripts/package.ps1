@@ -20,11 +20,22 @@ Copy-Item (Join-Path $Root "scripts\dist\config.windows.yaml") (Join-Path $Dist 
 Copy-Item (Join-Path $Root "scripts\dist\init.bat") $Dist
 Copy-Item (Join-Path $Root "scripts\dist\process.bat") $Dist
 Copy-Item (Join-Path $Root "scripts\dist\使用说明.txt") $Dist
-Copy-Item (Join-Path $Root "release\models\*") (Join-Path $Dist "models")
-Copy-Item (Join-Path $Root "release\lib\onnxruntime.dll") (Join-Path $Dist "lib") -ErrorAction SilentlyContinue
-if (-not (Test-Path (Join-Path $Dist "lib\onnxruntime.dll"))) {
-    Write-Warning "lib\onnxruntime.dll 缺失，请确认 download-models.ps1 已成功"
+$vcRedist = Join-Path $Root "scripts\dist\VC_redist.x64.exe"
+if (Test-Path $vcRedist) {
+    Copy-Item $vcRedist $Dist
+} else {
+    Write-Warning "VC_redist.x64.exe 未找到，请将安装包放到 scripts\dist\"
 }
+Copy-Item (Join-Path $Root "release\models\*") (Join-Path $Dist "models")
+$libSrc = Join-Path $Root "release\lib"
+Get-ChildItem "$libSrc\*.dll" -ErrorAction SilentlyContinue | ForEach-Object {
+    Copy-Item $_.FullName (Join-Path $Dist "lib")
+}
+if (-not (Test-Path (Join-Path $Dist "lib\onnxruntime.dll"))) {
+    Write-Error "lib\onnxruntime.dll missing; run scripts\download-models.ps1"
+}
+$dllCount = (Get-ChildItem (Join-Path $Dist "lib\*.dll")).Count
+Write-Host "Copied $dllCount ONNX Runtime DLL(s) to lib/"
 
 if (Test-Path $ZipPath) { Remove-Item $ZipPath -Force }
 Compress-Archive -Path $Dist -DestinationPath $ZipPath

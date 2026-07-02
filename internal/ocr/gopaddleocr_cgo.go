@@ -26,14 +26,23 @@ func (e *goPaddleEngine) Init(exeDir string, cfg config.OCRConfig) error {
 	if runtime.GOOS != "windows" {
 		switch runtime.GOOS {
 		case "darwin":
-			if cfg.OnnxRuntimeLib == "lib/onnxruntime.dll" {
+			if cfg.OnnxRuntimeLib == "lib/onnxruntime.dll" || cfg.OnnxRuntimeLib == "onnxruntime.dll" {
 				ortLib = pathutil.Resolve(exeDir, "lib/libonnxruntime.dylib")
 			}
 		default:
-			if cfg.OnnxRuntimeLib == "lib/onnxruntime.dll" {
+			if cfg.OnnxRuntimeLib == "lib/onnxruntime.dll" || cfg.OnnxRuntimeLib == "onnxruntime.dll" {
 				ortLib = pathutil.Resolve(exeDir, "lib/libonnxruntime.so")
 			}
 		}
+	} else {
+		if err := prepareORTEnvironment(exeDir, cfg.OnnxRuntimeLib); err != nil {
+			return err
+		}
+		resolved, err := resolveORTLibrary(exeDir, cfg.OnnxRuntimeLib)
+		if err != nil {
+			return err
+		}
+		ortLib = resolved
 	}
 	if err := os.Setenv("MODELS_DIR", modelsDir); err != nil {
 		return err

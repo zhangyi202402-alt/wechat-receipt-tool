@@ -5,15 +5,29 @@
   config.yaml           配置文件（门店列表等）
   init.bat / init.sh    创建当日门店文件夹
   process.bat / process.sh  识别截图，生成 Excel
-  lib/                  OCR 运行库（勿删）
+  VC_redist.x64.exe     VC++ 运行库安装包（Windows 首次使用）
+  lib/                  OCR 运行库（勿删，需包含全部 *.dll）
   models/               OCR 模型（勿删）
   data/                 数据目录（运行 init 后生成）
 
-【使用步骤】
+【首次使用（Windows）】
+  1. 双击 VC_redist.x64.exe，按提示安装 VC++ 运行库（仅需一次）
+  2. 双击 init.bat 创建今日目录
+  3. 将微信零钱明细截图放入 data\日期\各门店文件夹
+  4. 双击 process.bat 生成 Excel
+  5. 打开 data\日期\收款记录.xlsx 查看合并结果
+
+【使用步骤（已安装 VC++ 运行库）】
   1. 双击 init.bat（Mac 运行 ./init.sh）创建今日目录
   2. 将微信零钱明细截图放入 data\日期\各门店文件夹
   3. 双击 process.bat（Mac 运行 ./process.sh）生成 Excel
   4. 打开 data\日期\收款记录.xlsx 查看合并结果
+
+【Windows 若 OCR 初始化失败】
+  1. 确认已安装 VC_redist.x64.exe（或系统已装 VC++ x64 运行库）
+  2. 确认 lib\ 目录包含全部 *.dll（勿只留 onnxruntime.dll）
+  3. 确认 config.yaml 中 onnxruntime_lib: lib/onnxruntime.dll
+  4. 仍失败时请重新下载最新发布包
 
 【可选参数】
   process.bat --date 2026-07-02 --force

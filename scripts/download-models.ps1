@@ -32,9 +32,23 @@ if (-not (Test-Path (Join-Path $LibDir "onnxruntime.dll"))) {
     Write-Host "Downloading ONNX Runtime $ortVersion ..."
     Invoke-WebRequest -Uri $ortUrl -OutFile $ortZipPath -UseBasicParsing
     Expand-Archive -Path $ortZipPath -DestinationPath (Join-Path $Root "release\_ort") -Force
-    Copy-Item (Join-Path $Root "release\_ort\onnxruntime-win-x64-$ortVersion\lib\onnxruntime.dll") $LibDir
+    $ortLibSrc = Join-Path $Root "release\_ort\onnxruntime-win-x64-$ortVersion\lib"
+    Copy-Item "$ortLibSrc\*.dll" $LibDir
     Remove-Item $ortZipPath -Force -ErrorAction SilentlyContinue
     Remove-Item (Join-Path $Root "release\_ort") -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+$gomod = & go env GOMODCACHE 2>$null
+if ($gomod -and -not (Test-Path (Join-Path $LibDir "onnxruntime.dll"))) {
+    $fallback = Join-Path $gomod "github.com\yalue\onnxruntime_go@v1.27.0\test_data\onnxruntime.dll"
+    if (Test-Path $fallback) {
+        Write-Host "Using fallback onnxruntime.dll from go module cache"
+        Copy-Item $fallback $LibDir
+    }
+}
+
+if (-not (Test-Path (Join-Path $LibDir "onnxruntime.dll"))) {
+    Write-Error "onnxruntime.dll missing after download"
 }
 
 $cfgExample = Join-Path $Root "config.example.yaml"
