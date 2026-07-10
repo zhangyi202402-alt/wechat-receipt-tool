@@ -36,10 +36,11 @@ type Result struct {
 	ExcelPath      string
 	ExcelWritten   bool
 	ExcelSkipped   bool
+	DebugOCRPath   string
 	Errors         []string
 }
 
-func (s *Service) Run(date time.Time, storeFilter string, force bool) (*Result, error) {
+func (s *Service) Run(date time.Time, storeFilter string, force, debugOCR bool) (*Result, error) {
 	baseDir := filepath.Join(s.exeDir, s.cfg.BaseDir)
 	dateStr := date.Format(s.cfg.DateFormat)
 	dateDir := folders.DateDir(baseDir, dateStr)
@@ -61,6 +62,7 @@ func (s *Service) Run(date time.Time, storeFilter string, force bool) (*Result, 
 
 	res := &Result{Date: dateStr}
 	var merged []models.ReceiptRecord
+	var debugSections []ocrDebugSection
 
 	for _, store := range stores {
 		storeDir := folders.StoreDir(baseDir, dateStr, store)
@@ -73,7 +75,10 @@ func (s *Service) Run(date time.Time, storeFilter string, force bool) (*Result, 
 			})
 			continue
 		}
-		sr, recs, err := s.scanStore(storeDir, store, dateStr)
+		sr, recs, dbg, err := s.scanStore(storeDir, store, dateStr, debugOCR)
+		if debugOCR {
+			debugSections = append(debugSections, dbg...)
+		}
 		if err != nil {
 			res.Errors = append(res.Errors, fmt.Sprintf("%s: %v", store, err))
 		}
@@ -113,10 +118,18 @@ func (s *Service) Run(date time.Time, storeFilter string, force bool) (*Result, 
 		return res, fmt.Errorf("write report: %w", err)
 	}
 
+	if debugOCR && len(debugSections) > 0 {
+		debugPath := filepath.Join(dateDir, "ocr-debug.txt")
+		if err := writeOCRDebug(debugPath, dateStr, debugSections); err != nil {
+			return res, fmt.Errorf("write ocr debug: %w", err)
+		}
+		res.DebugOCRPath = debugPath
+	}
+
 	return res, nil
 }
 
-func (s *Service) scanStore(storeDir, store, dateStr string) (*report.StoreReport, []models.ReceiptRecord, error) {
+func (s *Service) scanStore(storeDir, store, dateStr string, debugOCR bool) (*report.StoreReport, []models.ReceiptRecord, []ocrDebugSection, error) {
 	sr := &report.StoreReport{
 		Store:       store,
 		Date:        dateStr,
@@ -125,16 +138,17 @@ func (s *Service) scanStore(storeDir, store, dateStr string) (*report.StoreRepor
 
 	images, err := listImages(storeDir, s.cfg)
 	if err != nil {
-		return sr, nil, err
+		return sr, nil, nil, err
 	}
 	sr.ImageCount = len(images)
 	if len(images) == 0 {
 		sr.SkippedReason = "无图片"
-		return sr, nil, nil
+		return sr, nil, nil, nil
 	}
 
 	fallbackYear, _ := time.Parse(s.cfg.DateFormat, dateStr)
 	var all []models.ReceiptRecord
+	var debugSections []ocrDebugSection
 	var mu sync.Mutex
 	workers := s.cfg.OCR.Workers
 	if workers > len(images) {
@@ -167,6 +181,14 @@ func (s *Service) scanStore(storeDir, store, dateStr string) (*report.StoreRepor
 				})
 				recs := p.Parse(boxes)
 				imgResult.RecordCount = len(recs)
+				if debugOCR {
+					sec := buildOCRDebugSection(store, filepath.Base(imgPath), boxes, recs)
+					mu.Lock()
+					debugSections = append(debugSections, ocrDebugSection{
+						Store: store, ImageName: filepath.Base(imgPath), Body: sec,
+					})
+					mu.Unlock()
+				}
 				for _, r := range recs {
 					if r.LowConfidence {
 						imgResult.LowConfidence = append(imgResult.LowConfidence,
@@ -193,7 +215,7 @@ func (s *Service) scanStore(storeDir, store, dateStr string) (*report.StoreRepor
 	sr.RawRecords = len(all)
 	storeDeduped := parser.Deduplicate(all)
 	sr.DedupRecords = len(storeDeduped)
-	return sr, all, nil
+	return sr, all, debugSections, nil
 }
 
 func listImages(dir string, cfg *config.Config) ([]string, error) {

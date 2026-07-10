@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -67,7 +68,7 @@ func TestService_MergedExcelAtDateDir(t *testing.T) {
 
 	svc := NewService(cfg, dir, &fixtureOCREngine{lines: loadFixtureLines(t)})
 	date, _ := time.Parse("2006-01-02", dateStr)
-	result, err := svc.Run(date, "", true)
+	result, err := svc.Run(date, "", true, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,5 +88,46 @@ func TestService_MergedExcelAtDateDir(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(storeDir, "收款记录.xlsx")); err == nil {
 		t.Fatal("excel should not be in store subdir")
+	}
+}
+
+func TestService_DebugOCRFile(t *testing.T) {
+	dir := t.TempDir()
+	store := "北京世纪金源店"
+	dateStr := "2026-07-02"
+	storeDir := filepath.Join(dir, dateStr, store)
+	if err := os.MkdirAll(storeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(storeDir, "fake.png"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &config.Config{
+		BaseDir:         ".",
+		DateFormat:      "2006-01-02",
+		Stores:          []string{store},
+		OutputFilename:  "收款记录.xlsx",
+		ReportFilename:  "处理报告.txt",
+		ImageExtensions: []string{".png"},
+		OCR:             config.OCRConfig{Workers: 1},
+	}
+
+	svc := NewService(cfg, dir, &fixtureOCREngine{lines: loadFixtureLines(t)})
+	date, _ := time.Parse("2006-01-02", dateStr)
+	result, err := svc.Run(date, "", true, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.DebugOCRPath == "" {
+		t.Fatal("expected debug ocr path")
+	}
+	data, err := os.ReadFile(result.DebugOCRPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	if !strings.Contains(content, "OCR 原始框") || !strings.Contains(content, "二维码收款") {
+		t.Fatalf("unexpected debug content: %s", content)
 	}
 }

@@ -32,3 +32,4 @@
 【可选参数】
   process.bat --date 2026-07-02 --force
   process.bat --store 北京世纪金源店
+  process.bat --debug-ocr          输出 OCR 原始结果到 data\日期\ocr-debug.txt

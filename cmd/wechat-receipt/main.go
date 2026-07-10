@@ -15,10 +15,11 @@ import (
 )
 
 var (
-	configPath string
-	dateFlag   string
-	storeFlag  string
-	forceFlag  bool
+	configPath   string
+	dateFlag     string
+	storeFlag    string
+	forceFlag    bool
+	debugOCRFlag bool
 )
 
 func main() {
@@ -112,7 +113,7 @@ func processCmd() *cobra.Command {
 			defer engine.Close()
 
 			svc := process.NewService(cfg, exeDir, engine)
-			result, err := svc.Run(date, storeFlag, forceFlag)
+			result, err := svc.Run(date, storeFlag, forceFlag, debugOCRFlag)
 			if err != nil {
 				return err
 			}
@@ -129,6 +130,9 @@ func processCmd() *cobra.Command {
 			if result.ExcelSkipped {
 				fmt.Println("Excel: 已跳过（使用 --force 覆盖）")
 			}
+			if result.DebugOCRPath != "" {
+				fmt.Printf("OCR 调试: %s\n", result.DebugOCRPath)
+			}
 			for _, e := range result.Errors {
 				fmt.Fprintf(os.Stderr, "错误: %s\n", e)
 			}
@@ -141,5 +145,6 @@ func processCmd() *cobra.Command {
 	cmd.Flags().StringVar(&dateFlag, "date", "", "日期 YYYY-MM-DD（默认今天）")
 	cmd.Flags().StringVar(&storeFlag, "store", "", "仅处理指定门店")
 	cmd.Flags().BoolVar(&forceFlag, "force", false, "覆盖已有 Excel")
+	cmd.Flags().BoolVar(&debugOCRFlag, "debug-ocr", false, "输出 OCR 原始识别结果到 data/日期/ocr-debug.txt")
 	return cmd
 }

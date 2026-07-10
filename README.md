@@ -36,6 +36,7 @@ wechat-receipt.exe process --date 2026-07-02 --store 北京世纪金源店 --for
 
 - `--force`：覆盖已有 Excel
 - `--config`：指定配置文件路径
+- `--debug-ocr`：生成 `data/{日期}/ocr-debug.txt`，包含每张截图的 OCR 原始文字框与解析结果（排查金额识别问题）
 
 ### Windows OCR 报错排查
 
