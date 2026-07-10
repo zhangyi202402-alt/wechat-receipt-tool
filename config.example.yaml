@@ -28,6 +28,8 @@ ocr:
   onnxruntime_lib: lib/onnxruntime.dll
   models_dir: models
   rapidocr_json_bin: bin/RapidOCR-json.exe
-  workers: 2
+  amount_column_ocr: true
+  amount_column_start: 0.55
+  amount_column_scale: 2.0
 process:
   overwrite: false

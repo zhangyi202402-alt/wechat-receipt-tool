@@ -17,8 +17,12 @@ func WriteImageSection(w io.Writer, store, imageName string, boxes []ocr.TextBox
 	fmt.Fprintf(w, "=== %s | 门店: %s ===\n", imageName, store)
 	fmt.Fprintf(w, "OCR 原始框 (%d):\n", len(boxes))
 	for i, line := range formatBoxes(boxes) {
-		fmt.Fprintf(w, "  %3d y=%6.0f x=%6.0f score=%.3f  %q\n",
-			i+1, line.y, line.x, line.score, line.text)
+		tag := " "
+		if line.amountCol {
+			tag = " [金额列]"
+		}
+		fmt.Fprintf(w, "  %3d y=%6.0f x=%6.0f score=%.3f%s %q\n",
+			i+1, line.y, line.x, line.score, tag, line.text)
 	}
 	fmt.Fprintf(w, "解析记录 (%d):\n", len(records))
 	if len(records) == 0 {
@@ -53,19 +57,21 @@ func formatBoxes(boxes []ocr.TextBox) []boxLine {
 	out := make([]boxLine, len(sorted))
 	for i, b := range sorted {
 		out[i] = boxLine{
-			text:  b.Text,
-			x:     centerX(b.Box),
-			y:     centerY(b.Box),
-			score: b.Score,
+			text:      b.Text,
+			x:         centerX(b.Box),
+			y:         centerY(b.Box),
+			score:     b.Score,
+			amountCol: b.AmountColumn,
 		}
 	}
 	return out
 }
 
 type boxLine struct {
-	text  string
-	x, y  float64
-	score float64
+	text      string
+	x, y      float64
+	score     float64
+	amountCol bool
 }
 
 func previewQRBlocks(boxes []ocr.TextBox) []string {

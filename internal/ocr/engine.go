@@ -8,9 +8,10 @@ import (
 )
 
 type TextBox struct {
-	Text  string
-	Box   [4][2]float64
-	Score float64
+	Text         string
+	Box          [4][2]float64
+	Score        float64
+	AmountColumn bool // 来自金额列二次 OCR，解析时优先采用
 }
 
 type Engine interface {

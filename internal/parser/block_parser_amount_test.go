@@ -1,6 +1,10 @@
 package parser
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/kalading/wechat-receipt-tool/internal/ocr"
+)
 
 // 模拟 OCR 将 +300.00 拆碎时的解析结果
 func TestBlockParser_AmountSplitVariants(t *testing.T) {
@@ -70,6 +74,30 @@ func TestBlockParser_AmountSplitVariants(t *testing.T) {
 				t.Errorf("amount: got %.2f want %.2f (combined block would use regex on joined text)", recs[0].Amount, tc.amount)
 			}
 		})
+	}
+}
+
+func TestBlockParser_PreferAmountColumn(t *testing.T) {
+	lines := []FixtureLine{
+		{Text: "二维码收款-来自*辛", Box: boxAt(60, 380, 280, 405), Score: 0.99},
+		{Text: "+30.00", Box: boxAt(350, 380, 430, 405), Score: 0.99},
+		{Text: "7月9日19:47", Box: boxAt(60, 412, 200, 432), Score: 0.97},
+	}
+	var boxes []ocr.TextBox
+	for _, ln := range lines {
+		boxes = append(boxes, ocr.TextBox{Text: ln.Text, Box: ln.Box, Score: ln.Score})
+	}
+	// 金额列二次 OCR 在同一 Y 带给出更完整结果
+	boxes = append(boxes, ocr.TextBox{
+		Text: "+300.00", Box: boxAt(350, 380, 430, 405), Score: 0.98, AmountColumn: true,
+	})
+
+	recs := NewBlockParser(Options{FallbackYear: 2026, StoreName: "测试"}).Parse(boxes)
+	if len(recs) != 1 {
+		t.Fatalf("expected 1 record, got %d", len(recs))
+	}
+	if recs[0].Amount != 300 {
+		t.Errorf("amount: got %.2f want 300", recs[0].Amount)
 	}
 }
 

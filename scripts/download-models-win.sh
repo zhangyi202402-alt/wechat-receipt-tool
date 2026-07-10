@@ -6,21 +6,23 @@ MODELS_DIR="$ROOT/release/models"
 LIB_DIR="$ROOT/release/lib"
 mkdir -p "$MODELS_DIR" "$LIB_DIR"
 
-declare -A MODELS=(
-  ["PP-OCRv5_server_rec.onnx"]="https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.4.0/onnx/PP-OCRv5/rec/ch_PP-OCRv5_rec_server_infer.onnx"
-  ["PP-OCRv5_server_det.onnx"]="https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.4.0/onnx/PP-OCRv5/det/ch_PP-OCRv5_server_det.onnx"
-  ["PP-LCNet_x1_0_textline_ori.onnx"]="https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.4.0/onnx/PP-OCRv4/cls/ch_ppocr_mobile_v2.0_cls_infer.onnx"
-)
-
-for name in "${!MODELS[@]}"; do
-  dest="$MODELS_DIR/$name"
+download_model() {
+  local name="$1" url="$2"
+  local dest="$MODELS_DIR/$name"
   if [[ -f "$dest" ]]; then
     echo "Exists: $name"
   else
     echo "Downloading $name ..."
-    curl -L --fail --retry 3 -o "$dest" "${MODELS[$name]}"
+    curl -L --fail --retry 3 -o "$dest" "$url"
   fi
-done
+}
+
+download_model "PP-OCRv5_server_rec.onnx" \
+  "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.4.0/onnx/PP-OCRv5/rec/ch_PP-OCRv5_rec_server_infer.onnx"
+download_model "PP-OCRv5_server_det.onnx" \
+  "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.4.0/onnx/PP-OCRv5/det/ch_PP-OCRv5_server_det.onnx"
+download_model "PP-LCNet_x1_0_textline_ori.onnx" \
+  "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.4.0/onnx/PP-OCRv4/cls/ch_ppocr_mobile_v2.0_cls_infer.onnx"
 
 ORT_VERSION="1.24.1"
 ORT_ZIP="onnxruntime-win-x64-${ORT_VERSION}.zip"

@@ -15,7 +15,10 @@ import (
 )
 
 type goPaddleEngine struct {
-	engine *gpaddle.Engine
+	engine            *gpaddle.Engine
+	amountColumnOCR   bool
+	amountColumnStart float64
+	amountColumnScale float64
 }
 
 func newGoPaddleEngine() Engine { return &goPaddleEngine{} }
@@ -55,6 +58,11 @@ func (e *goPaddleEngine) Init(exeDir string, cfg config.OCRConfig) error {
 	if err := e.engine.Init(); err != nil {
 		return fmt.Errorf("gopaddleocr init: %w", err)
 	}
+	if cfg.AmountColumnOCR != nil {
+		e.amountColumnOCR = *cfg.AmountColumnOCR
+	}
+	e.amountColumnStart = cfg.AmountColumnStart
+	e.amountColumnScale = cfg.AmountColumnScale
 	return nil
 }
 
@@ -70,6 +78,34 @@ func (e *goPaddleEngine) Recognize(imgPath string) ([]TextBox, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read image: %w", err)
 	}
+	boxes, err := e.runOCR(data)
+	if err != nil {
+		return nil, err
+	}
+	boxes = DeduplicateBoxes(boxes)
+	if !e.amountColumnOCR {
+		return boxes, nil
+	}
+
+	img, err := decodeImage(data)
+	if err != nil {
+		return boxes, nil
+	}
+	cropData, scale, err := cropAndScaleAmountColumn(img, e.amountColumnStart, e.amountColumnScale)
+	if err != nil || len(cropData) == 0 {
+		return boxes, nil
+	}
+	colBoxes, err := e.runOCR(cropData)
+	if err != nil {
+		return boxes, nil
+	}
+	bounds := img.Bounds()
+	cropX := float64(bounds.Dx()) * e.amountColumnStart
+	mapAmountColumnBoxes(colBoxes, cropX, scale)
+	return DeduplicateBoxes(append(boxes, colBoxes...)), nil
+}
+
+func (e *goPaddleEngine) runOCR(data []byte) ([]TextBox, error) {
 	results, err := e.engine.RunOCR(data)
 	if err != nil {
 		return nil, fmt.Errorf("run ocr: %w", err)
@@ -80,9 +116,13 @@ func (e *goPaddleEngine) Recognize(imgPath string) ([]TextBox, error) {
 func convertResults(results []gpaddle.Result) []TextBox {
 	var boxes []TextBox
 	for _, r := range results {
-		boxes = append(boxes, resultToBox(r))
+		parent := resultToBox(r)
+		boxes = append(boxes, parent)
 		for _, child := range r.Children {
-			boxes = append(boxes, resultToBox(child))
+			cb := resultToBox(child)
+			if !boxNearDuplicate(parent, cb) {
+				boxes = append(boxes, cb)
+			}
 		}
 	}
 	return boxes

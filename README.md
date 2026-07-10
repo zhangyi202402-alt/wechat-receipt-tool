@@ -147,8 +147,17 @@ CGO_ENABLED=0 go test ./...
 
 `config.yaml` 中 `ocr.provider`：
 
-- `gopaddleocr`（默认）：内置 ONNX OCR，免费离线
+- `gopaddleocr`（默认）：内置 ONNX OCR，免费离线；默认对截图**右侧金额列二次 OCR**（2 倍放大）以提升金额准确率
 - `rapidocr-json`：调用外部 [RapidOCR-json](https://github.com/RapidAI/RapidOCR) 可执行文件
+
+金额列二次识别可在 `config.yaml` 关闭或调参：
+
+```yaml
+ocr:
+  amount_column_ocr: true      # 默认 true
+  amount_column_start: 0.55    # 从 55% 宽度起裁剪右侧
+  amount_column_scale: 2.0     # 放大倍数
+```
 
 ## 限制
 

@@ -63,8 +63,9 @@ func (p *BlockParser) Parse(boxes []ocr.TextBox) []models.ReceiptRecord {
 	if len(boxes) == 0 {
 		return nil
 	}
+	boxes = ocr.DeduplicateBoxes(boxes)
 	lines := clusterLines(boxes, p.opts.RowGap)
-	blocks := clusterBlocks(lines, p.opts.BlockGap)
+	blocks := mergeReceiptBlocks(clusterBlocks(lines, p.opts.BlockGap))
 
 	year, month := p.opts.FallbackYear, 0
 	var records []models.ReceiptRecord
@@ -83,7 +84,7 @@ func (p *BlockParser) Parse(boxes []ocr.TextBox) []models.ReceiptRecord {
 		if !strings.Contains(combined, "二维码收款") {
 			continue
 		}
-		rec, ok := p.extractReceipt(blk, year, month)
+		rec, ok := p.extractReceipt(blk, boxes, year, month)
 		if !ok {
 			continue
 		}
@@ -95,7 +96,7 @@ func (p *BlockParser) Parse(boxes []ocr.TextBox) []models.ReceiptRecord {
 	return records
 }
 
-func (p *BlockParser) extractReceipt(blk block, year, month int) (models.ReceiptRecord, bool) {
+func (p *BlockParser) extractReceipt(blk block, allBoxes []ocr.TextBox, year, month int) (models.ReceiptRecord, bool) {
 	combined := strings.Join(lineTexts(blk.lines), "\n")
 	var rec models.ReceiptRecord
 
@@ -105,12 +106,10 @@ func (p *BlockParser) extractReceipt(blk block, year, month int) (models.Receipt
 		return rec, false
 	}
 
-	if m := amountRe.FindStringSubmatch(combined); len(m) == 2 {
-		amount, err := strconv.ParseFloat(m[1], 64)
-		if err != nil {
-			return rec, false
-		}
-		rec.Amount = amount
+	fullAmt, hasFull := parseAmountFromText(combined)
+	colAmt, hasCol := bestAmountFromColumn(blk, allBoxes)
+	if amt, ok := mergeAmountChoice(fullAmt, colAmt, hasFull, hasCol); ok {
+		rec.Amount = amt
 	} else {
 		return rec, false
 	}
@@ -182,8 +181,14 @@ func clusterLines(boxes []ocr.TextBox, rowGap float64) []visualLine {
 			return lineCenterX(g[i]) < lineCenterX(g[j])
 		})
 		var parts []string
+		seenText := make(map[string]struct{})
 		var top, bottom, scoreSum float64
+		var count float64
 		for i, b := range g {
+			if _, ok := seenText[b.Text]; ok {
+				continue
+			}
+			seenText[b.Text] = struct{}{}
 			parts = append(parts, b.Text)
 			t, bt := boxTop(b.Box), boxBottom(b.Box)
 			if i == 0 || t < top {
@@ -193,12 +198,16 @@ func clusterLines(boxes []ocr.TextBox, rowGap float64) []visualLine {
 				bottom = bt
 			}
 			scoreSum += b.Score
+			count++
+		}
+		if count == 0 {
+			continue
 		}
 		lines = append(lines, visualLine{
 			text:   strings.Join(parts, " "),
 			topY:   top,
 			bottom: bottom,
-			score:  scoreSum / float64(len(g)),
+			score:  scoreSum / count,
 		})
 	}
 	return lines
@@ -225,7 +234,19 @@ func clusterBlocks(lines []visualLine, blockGap float64) []block {
 			continue
 		}
 		if strings.Contains(cur.text, "二维码收款") {
-			flush()
+			src := qrSourceKey(cur.text)
+			if len(current.lines) > 0 {
+				prevCombined := strings.Join(lineTexts(current.lines), " ")
+				prevSrc := qrSourceKey(prevCombined)
+				if src != "" && src == prevSrc {
+					gap := cur.topY - lineAnchorY(current.lines)
+					if gap >= 0 && gap <= receiptLineGap {
+						current.lines = appendUniqueLine(current.lines, cur)
+						continue
+					}
+				}
+				flush()
+			}
 			current.lines = []visualLine{cur}
 			continue
 		}

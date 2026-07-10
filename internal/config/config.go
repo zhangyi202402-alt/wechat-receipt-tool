@@ -9,11 +9,14 @@ import (
 )
 
 type OCRConfig struct {
-	Provider        string `yaml:"provider"`
-	OnnxRuntimeLib  string `yaml:"onnxruntime_lib"`
-	ModelsDir       string `yaml:"models_dir"`
-	RapidOCRJsonBin string `yaml:"rapidocr_json_bin"`
-	Workers         int    `yaml:"workers"`
+	Provider          string  `yaml:"provider"`
+	OnnxRuntimeLib    string  `yaml:"onnxruntime_lib"`
+	ModelsDir         string  `yaml:"models_dir"`
+	RapidOCRJsonBin   string  `yaml:"rapidocr_json_bin"`
+	Workers           int     `yaml:"workers"`
+	AmountColumnOCR   *bool   `yaml:"amount_column_ocr"`
+	AmountColumnStart float64 `yaml:"amount_column_start"` // 裁剪起始比例（0.55 = 右 45%）
+	AmountColumnScale float64 `yaml:"amount_column_scale"` // 放大倍数
 }
 
 type ProcessConfig struct {
@@ -74,6 +77,16 @@ func (c *Config) applyDefaults() {
 	}
 	if c.OCR.Workers <= 0 {
 		c.OCR.Workers = 2
+	}
+	if c.OCR.AmountColumnOCR == nil {
+		v := true
+		c.OCR.AmountColumnOCR = &v
+	}
+	if c.OCR.AmountColumnStart <= 0 {
+		c.OCR.AmountColumnStart = 0.55
+	}
+	if c.OCR.AmountColumnScale <= 0 {
+		c.OCR.AmountColumnScale = 2.0
 	}
 	for i, ext := range c.ImageExtensions {
 		if !strings.HasPrefix(ext, ".") {
