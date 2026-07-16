@@ -15,7 +15,7 @@ type OCRConfig struct {
 	RapidOCRJsonBin   string  `yaml:"rapidocr_json_bin"`
 	Workers           int     `yaml:"workers"`
 	AmountColumnOCR   *bool   `yaml:"amount_column_ocr"`
-	AmountColumnStart float64 `yaml:"amount_column_start"` // 裁剪起始比例（0.55 = 右 45%）
+	AmountColumnStart float64 `yaml:"amount_column_start"` // 裁剪起始比例（0.75 = 右 25%）
 	AmountColumnScale float64 `yaml:"amount_column_scale"` // 放大倍数
 	TimeColumnOCR     *bool   `yaml:"time_column_ocr"`
 	TimeColumnEnd     float64 `yaml:"time_column_end"`   // 左侧裁剪结束比例（0.55 = 左 55%）
@@ -23,7 +23,12 @@ type OCRConfig struct {
 }
 
 type ProcessConfig struct {
-	Overwrite bool `yaml:"overwrite"`
+	Overwrite               bool     `yaml:"overwrite"`
+	IncludeTypes            []string `yaml:"include_types"`
+	RequireDate             bool     `yaml:"require_date"`
+	ReviewConfidenceBelow   float64  `yaml:"review_confidence_below"`
+	SaveReviewSnippets      *bool    `yaml:"save_review_snippets"`
+	EmbedReviewImages       *bool    `yaml:"embed_review_images"`
 }
 
 type Config struct {
@@ -86,7 +91,7 @@ func (c *Config) applyDefaults() {
 		c.OCR.AmountColumnOCR = &v
 	}
 	if c.OCR.AmountColumnStart <= 0 {
-		c.OCR.AmountColumnStart = 0.55
+		c.OCR.AmountColumnStart = 0.75
 	}
 	if c.OCR.AmountColumnScale <= 0 {
 		c.OCR.AmountColumnScale = 2.0
@@ -100,6 +105,20 @@ func (c *Config) applyDefaults() {
 	}
 	if c.OCR.TimeColumnScale <= 0 {
 		c.OCR.TimeColumnScale = 2.0
+	}
+	if len(c.Process.IncludeTypes) == 0 {
+		c.Process.IncludeTypes = []string{"all"}
+	}
+	if c.Process.ReviewConfidenceBelow <= 0 {
+		c.Process.ReviewConfidenceBelow = 0.85
+	}
+	if c.Process.SaveReviewSnippets == nil {
+		v := true
+		c.Process.SaveReviewSnippets = &v
+	}
+	if c.Process.EmbedReviewImages == nil {
+		v := true
+		c.Process.EmbedReviewImages = &v
 	}
 	for i, ext := range c.ImageExtensions {
 		if !strings.HasPrefix(ext, ".") {

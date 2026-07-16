@@ -72,7 +72,7 @@ func TestService_MergedExcelAtDateDir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.TotalDedup != 3 {
+	if result.TotalDedup != 4 {
 		t.Fatalf("total dedup: %d", result.TotalDedup)
 	}
 	if !result.ExcelWritten {

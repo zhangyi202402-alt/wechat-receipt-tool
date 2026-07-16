@@ -28,5 +28,16 @@ ocr:
   onnxruntime_lib: lib/libonnxruntime.dylib
   models_dir: models
   workers: 2
+  amount_column_ocr: true
+  amount_column_start: 0.75
+  amount_column_scale: 2.0
+  time_column_ocr: true
+  time_column_end: 0.55
+  time_column_scale: 2.0
 process:
   overwrite: false
+  include_types: [all]
+  require_date: false
+  review_confidence_below: 0.85
+  save_review_snippets: true
+  embed_review_images: true

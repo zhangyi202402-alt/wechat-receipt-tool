@@ -31,16 +31,17 @@ func WriteImageSection(w io.Writer, store, imageName string, boxes []ocr.TextBox
 		fmt.Fprintln(w, "  (无)")
 	} else {
 		for _, r := range records {
-			conf := ""
-			if r.LowConfidence {
-				conf = " [低置信度]"
+			status := r.StatusLabelCN()
+			reasons := ""
+			if len(r.ReviewReasons) > 0 {
+				reasons = " 原因=" + strings.Join(r.ReviewReasons, "；")
 			}
-			fmt.Fprintf(w, "  来源=%s 金额=%.2f 日期=%s %s OCRScore=%.3f%s\n",
-				r.Source, r.Amount, r.Date, r.Time, r.OCRScore, conf)
+			fmt.Fprintf(w, "  类型=%s 对方=%s 金额=%.2f 日期=%s %s 状态=%s 置信度=%.0f%%%s\n",
+				r.Type.LabelCN(), r.Source, r.Amount, r.Date, r.Time, status, r.Confidence*100, reasons)
 		}
 	}
 	fmt.Fprintln(w, "交易块预览:")
-	for i, block := range previewQRBlocks(boxes) {
+	for i, block := range previewTxBlocks(boxes) {
 		fmt.Fprintf(w, "  block %d: %s\n", i+1, block)
 	}
 	fmt.Fprintln(w)
@@ -78,14 +79,40 @@ type boxLine struct {
 	timeCol   bool
 }
 
-func previewQRBlocks(boxes []ocr.TextBox) []string {
+func previewTxBlocks(boxes []ocr.TextBox) []string {
+	recs := parser.ParseFromLines(boxesToFixture(boxes), parser.Options{FallbackYear: 2026})
+	if len(recs) == 0 {
+		// fallback: show raw anchors
+		return previewAnchors(boxes)
+	}
+	var out []string
+	for _, r := range recs {
+		out = append(out, fmt.Sprintf("%s | %s | %.2f | %s %s | %s",
+			r.Type.LabelCN(), r.Source, r.Amount, r.Date, r.Time, r.StatusLabelCN()))
+	}
+	return out
+}
+
+func boxesToFixture(boxes []ocr.TextBox) []parser.FixtureLine {
+	out := make([]parser.FixtureLine, len(boxes))
+	for i, b := range boxes {
+		out[i] = parser.FixtureLine{Text: b.Text, Box: b.Box, Score: b.Score}
+	}
+	return out
+}
+
+func previewAnchors(boxes []ocr.TextBox) []string {
 	sorted := append([]ocr.TextBox(nil), boxes...)
 	sort.Slice(sorted, func(i, j int) bool {
 		return centerY(sorted[i].Box) < centerY(sorted[j].Box)
 	})
 	var blocks []string
 	for i, b := range sorted {
-		if !strings.Contains(b.Text, "二维码收款") {
+		text := b.Text
+		isAmt := strings.Contains(text, "+") || strings.Contains(text, "-")
+		isTitle := strings.Contains(text, "二维码收款") || strings.Contains(text, "转账") ||
+			strings.Contains(text, "红包") || strings.Contains(text, "退款") || strings.Contains(text, "提现")
+		if !isAmt && !isTitle {
 			continue
 		}
 		startY := centerY(b.Box)
@@ -95,10 +122,16 @@ func previewQRBlocks(boxes []ocr.TextBox) []string {
 			if j > i && cy-startY > 120 {
 				break
 			}
-			if j > i && strings.Contains(sorted[j].Text, "二维码收款") {
-				break
-			}
 			parts = append(parts, fmt.Sprintf("%q", sorted[j].Text))
+			if j > i {
+				tj := sorted[j].Text
+				if strings.Contains(tj, "二维码收款") || strings.Contains(tj, "转账") ||
+					strings.Contains(tj, "红包") {
+					if j > i {
+						break
+					}
+				}
+			}
 		}
 		blocks = append(blocks, strings.Join(parts, " + "))
 	}

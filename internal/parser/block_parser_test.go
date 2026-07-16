@@ -33,36 +33,56 @@ func TestBlockParser_QRReceipts(t *testing.T) {
 		SourceImage:  "sample.png",
 	}))
 
-	if len(records) != 3 {
-		t.Fatalf("expected 3 QR records, got %d", len(records))
+	if len(records) != 4 {
+		t.Fatalf("expected 4 records (3 QR + 1 refund), got %d", len(records))
 	}
 
-	if records[0].Date != "2026-06-30" || records[0].Amount != 1134 {
-		t.Errorf("first record by sort: got %s %.2f", records[0].Date, records[0].Amount)
+	qrCount := 0
+	var june *models.ReceiptRecord
+	for i := range records {
+		r := &records[i]
+		if r.Type == models.TxQRReceipt {
+			qrCount++
+		}
+		if r.Date == "2026-06-30" && r.Amount == 1134 {
+			june = r
+		}
 	}
-	if records[0].Source != "*李" {
-		t.Errorf("source: got %q", records[0].Source)
+	if qrCount != 3 {
+		t.Fatalf("expected 3 QR records, got %d", qrCount)
 	}
-	if records[0].Transferor != "北京世纪金源店" {
-		t.Errorf("transferor: got %q", records[0].Transferor)
+	if june == nil {
+		t.Fatal("expected June 30 record")
+	}
+	if june.Source != "*李" {
+		t.Errorf("source: got %q", june.Source)
+	}
+	if june.Transferor != "北京世纪金源店" {
+		t.Errorf("transferor: got %q", june.Transferor)
 	}
 
-	// Duplicate at same time+amount should dedupe to 3 unique (two +1.00 at same time would dedupe)
 	foundJuly := false
+	foundRefund := false
 	for _, r := range records {
 		if r.Date == "2026-07-01" && r.Amount == 1 {
 			foundJuly = true
+		}
+		if r.Type == models.TxRefund && r.Amount == 10 {
+			foundRefund = true
 		}
 	}
 	if !foundJuly {
 		t.Error("expected July 1.00 record")
 	}
+	if !foundRefund {
+		t.Error("expected refund +10 record")
+	}
 }
 
 func TestDeduplicate(t *testing.T) {
 	records := []models.ReceiptRecord{
-		{Date: "2026-07-01", Time: "15:48", Amount: 1134, Source: "*李", OCRScore: 0.9},
-		{Date: "2026-07-01", Time: "15:48", Amount: 1134, Source: "*李", OCRScore: 0.95},
+		{Date: "2026-07-01", Time: "15:48", Amount: 1134, Source: "*李", Type: models.TxQRReceipt, OCRScore: 0.9},
+		{Date: "2026-07-01", Time: "15:48", Amount: 1134, Source: "*李", Type: models.TxQRReceipt, OCRScore: 0.95},
 	}
 	out := Deduplicate(records)
 	if len(out) != 1 {

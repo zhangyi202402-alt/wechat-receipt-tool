@@ -29,10 +29,15 @@ ocr:
   models_dir: models
   rapidocr_json_bin: bin/RapidOCR-json.exe
   amount_column_ocr: true
-  amount_column_start: 0.55
+  amount_column_start: 0.75   # 右侧 25% 为金额列
   amount_column_scale: 2.0
   time_column_ocr: true
   time_column_end: 0.55
   time_column_scale: 2.0
 process:
   overwrite: false
+  include_types: [all]
+  require_date: false
+  review_confidence_below: 0.85
+  save_review_snippets: true
+  embed_review_images: true
