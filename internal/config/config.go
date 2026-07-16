@@ -17,6 +17,9 @@ type OCRConfig struct {
 	AmountColumnOCR   *bool   `yaml:"amount_column_ocr"`
 	AmountColumnStart float64 `yaml:"amount_column_start"` // 裁剪起始比例（0.55 = 右 45%）
 	AmountColumnScale float64 `yaml:"amount_column_scale"` // 放大倍数
+	TimeColumnOCR     *bool   `yaml:"time_column_ocr"`
+	TimeColumnEnd     float64 `yaml:"time_column_end"`   // 左侧裁剪结束比例（0.55 = 左 55%）
+	TimeColumnScale   float64 `yaml:"time_column_scale"` // 放大倍数
 }
 
 type ProcessConfig struct {
@@ -87,6 +90,16 @@ func (c *Config) applyDefaults() {
 	}
 	if c.OCR.AmountColumnScale <= 0 {
 		c.OCR.AmountColumnScale = 2.0
+	}
+	if c.OCR.TimeColumnOCR == nil {
+		v := true
+		c.OCR.TimeColumnOCR = &v
+	}
+	if c.OCR.TimeColumnEnd <= 0 {
+		c.OCR.TimeColumnEnd = 0.55
+	}
+	if c.OCR.TimeColumnScale <= 0 {
+		c.OCR.TimeColumnScale = 2.0
 	}
 	for i, ext := range c.ImageExtensions {
 		if !strings.HasPrefix(ext, ".") {

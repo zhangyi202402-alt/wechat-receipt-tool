@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"math"
 	"regexp"
 	"sort"
@@ -114,26 +113,17 @@ func (p *BlockParser) extractReceipt(blk block, allBoxes []ocr.TextBox, year, mo
 		return rec, false
 	}
 
-	if m := dateTimeRe.FindStringSubmatch(combined); len(m) == 5 {
-		mo, _ := strconv.Atoi(m[1])
-		day, _ := strconv.Atoi(m[2])
-		hour, _ := strconv.Atoi(m[3])
-		minute, _ := strconv.Atoi(m[4])
-		useYear := year
-		if useYear == 0 {
-			useYear = p.opts.FallbackYear
-		}
-		if useYear == 0 {
-			useYear = time.Now().Year()
-		}
-		if month == 0 {
-			month = mo
-		}
-		rec.Date = fmt.Sprintf("%04d-%02d-%02d", useYear, mo, day)
-		rec.Time = fmt.Sprintf("%02d:%02d", hour, minute)
-	} else {
+	dt, ok := bestDateTime(combined, blk, allBoxes)
+	if !ok {
 		return rec, false
 	}
+	useYear := year
+	if useYear == 0 {
+		useYear = p.opts.FallbackYear
+	}
+	dateStr, timeStr, singleDigitHour := formatDateTime(dt, useYear, p.opts.FallbackYear)
+	rec.Date = dateStr
+	rec.Time = timeStr
 
 	var minScore float64 = 1
 	for _, ln := range blk.lines {
@@ -142,7 +132,7 @@ func (p *BlockParser) extractReceipt(blk block, allBoxes []ocr.TextBox, year, mo
 		}
 	}
 	rec.OCRScore = minScore
-	rec.LowConfidence = minScore < lowScoreThreshold
+	rec.LowConfidence = minScore < lowScoreThreshold || singleDigitHour
 	return rec, true
 }
 

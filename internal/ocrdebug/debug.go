@@ -20,6 +20,8 @@ func WriteImageSection(w io.Writer, store, imageName string, boxes []ocr.TextBox
 		tag := " "
 		if line.amountCol {
 			tag = " [金额列]"
+		} else if line.timeCol {
+			tag = " [时间列]"
 		}
 		fmt.Fprintf(w, "  %3d y=%6.0f x=%6.0f score=%.3f%s %q\n",
 			i+1, line.y, line.x, line.score, tag, line.text)
@@ -62,6 +64,7 @@ func formatBoxes(boxes []ocr.TextBox) []boxLine {
 			y:         centerY(b.Box),
 			score:     b.Score,
 			amountCol: b.AmountColumn,
+			timeCol:   b.TimeColumn,
 		}
 	}
 	return out
@@ -72,6 +75,7 @@ type boxLine struct {
 	x, y      float64
 	score     float64
 	amountCol bool
+	timeCol   bool
 }
 
 func previewQRBlocks(boxes []ocr.TextBox) []string {

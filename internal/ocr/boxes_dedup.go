@@ -38,10 +38,14 @@ func DeduplicateBoxes(boxes []TextBox) []TextBox {
 	return out
 }
 
+func sameColumnFlags(a, b TextBox) bool {
+	return a.AmountColumn == b.AmountColumn && a.TimeColumn == b.TimeColumn
+}
+
 func isDuplicateBox(existing []TextBox, b TextBox) bool {
 	cy, cx := boxCenter(b.Box)
 	for _, e := range existing {
-		if e.Text != b.Text || e.AmountColumn != b.AmountColumn {
+		if e.Text != b.Text || !sameColumnFlags(e, b) {
 			continue
 		}
 		ey, ex := boxCenter(e.Box)
@@ -53,7 +57,7 @@ func isDuplicateBox(existing []TextBox, b TextBox) bool {
 }
 
 func boxNearDuplicate(a, b TextBox) bool {
-	if a.Text != b.Text || a.AmountColumn != b.AmountColumn {
+	if a.Text != b.Text || !sameColumnFlags(a, b) {
 		return false
 	}
 	ay, ax := boxCenter(a.Box)

@@ -12,6 +12,7 @@ type TextBox struct {
 	Box          [4][2]float64
 	Score        float64
 	AmountColumn bool // 来自金额列二次 OCR，解析时优先采用
+	TimeColumn   bool // 来自时间列二次 OCR，解析时优先更完整时间
 }
 
 type Engine interface {

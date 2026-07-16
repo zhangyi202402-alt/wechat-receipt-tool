@@ -19,6 +19,9 @@ type goPaddleEngine struct {
 	amountColumnOCR   bool
 	amountColumnStart float64
 	amountColumnScale float64
+	timeColumnOCR     bool
+	timeColumnEnd     float64
+	timeColumnScale   float64
 }
 
 func newGoPaddleEngine() Engine { return &goPaddleEngine{} }
@@ -63,6 +66,11 @@ func (e *goPaddleEngine) Init(exeDir string, cfg config.OCRConfig) error {
 	}
 	e.amountColumnStart = cfg.AmountColumnStart
 	e.amountColumnScale = cfg.AmountColumnScale
+	if cfg.TimeColumnOCR != nil {
+		e.timeColumnOCR = *cfg.TimeColumnOCR
+	}
+	e.timeColumnEnd = cfg.TimeColumnEnd
+	e.timeColumnScale = cfg.TimeColumnScale
 	return nil
 }
 
@@ -83,7 +91,7 @@ func (e *goPaddleEngine) Recognize(imgPath string) ([]TextBox, error) {
 		return nil, err
 	}
 	boxes = DeduplicateBoxes(boxes)
-	if !e.amountColumnOCR {
+	if !e.amountColumnOCR && !e.timeColumnOCR {
 		return boxes, nil
 	}
 
@@ -91,18 +99,28 @@ func (e *goPaddleEngine) Recognize(imgPath string) ([]TextBox, error) {
 	if err != nil {
 		return boxes, nil
 	}
-	cropData, scale, err := cropAndScaleAmountColumn(img, e.amountColumnStart, e.amountColumnScale)
-	if err != nil || len(cropData) == 0 {
-		return boxes, nil
-	}
-	colBoxes, err := e.runOCR(cropData)
-	if err != nil {
-		return boxes, nil
-	}
 	bounds := img.Bounds()
-	cropX := float64(bounds.Dx()) * e.amountColumnStart
-	mapAmountColumnBoxes(colBoxes, cropX, scale)
-	return DeduplicateBoxes(append(boxes, colBoxes...)), nil
+
+	if e.amountColumnOCR {
+		cropData, scale, err := cropAndScaleAmountColumn(img, e.amountColumnStart, e.amountColumnScale)
+		if err == nil && len(cropData) > 0 {
+			if colBoxes, err := e.runOCR(cropData); err == nil {
+				cropX := float64(bounds.Dx()) * e.amountColumnStart
+				mapAmountColumnBoxes(colBoxes, cropX, scale)
+				boxes = append(boxes, colBoxes...)
+			}
+		}
+	}
+	if e.timeColumnOCR {
+		cropData, scale, err := cropAndScaleTimeColumn(img, e.timeColumnEnd, e.timeColumnScale)
+		if err == nil && len(cropData) > 0 {
+			if colBoxes, err := e.runOCR(cropData); err == nil {
+				mapTimeColumnBoxes(colBoxes, scale)
+				boxes = append(boxes, colBoxes...)
+			}
+		}
+	}
+	return DeduplicateBoxes(boxes), nil
 }
 
 func (e *goPaddleEngine) runOCR(data []byte) ([]TextBox, error) {

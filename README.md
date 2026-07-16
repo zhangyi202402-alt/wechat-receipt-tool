@@ -157,6 +157,9 @@ ocr:
   amount_column_ocr: true      # 默认 true
   amount_column_start: 0.55    # 从 55% 宽度起裁剪右侧
   amount_column_scale: 2.0     # 放大倍数
+  time_column_ocr: true        # 默认 true：左侧时间列二次 OCR
+  time_column_end: 0.55        # 左侧裁到 55% 宽度
+  time_column_scale: 2.0       # 放大倍数
 ```
 
 ## 限制

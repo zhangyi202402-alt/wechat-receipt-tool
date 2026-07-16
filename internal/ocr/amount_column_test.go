@@ -38,3 +38,28 @@ func TestMapAmountColumnBoxes(t *testing.T) {
 		t.Fatalf("y scale: got %v want 10", boxes[0].Box[0][1])
 	}
 }
+
+func TestCropAndScaleTimeColumn(t *testing.T) {
+	img := image.NewRGBA(image.Rect(0, 0, 100, 50))
+	data, scale, err := cropAndScaleTimeColumn(img, 0.55, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(data) == 0 {
+		t.Fatal("empty png")
+	}
+	if scale != 2 {
+		t.Fatalf("scale: got %v", scale)
+	}
+}
+
+func TestMapTimeColumnBoxes(t *testing.T) {
+	boxes := []TextBox{{Text: "7月14日16:26", Box: [4][2]float64{{20, 40}, {80, 40}, {80, 50}, {20, 50}}}}
+	mapTimeColumnBoxes(boxes, 2)
+	if !boxes[0].TimeColumn {
+		t.Fatal("expected TimeColumn")
+	}
+	if boxes[0].Box[0][0] != 10 || boxes[0].Box[0][1] != 20 {
+		t.Fatalf("coords: %+v", boxes[0].Box)
+	}
+}
